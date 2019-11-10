@@ -6,7 +6,8 @@ BASEPATH=$(dirname $PWD)
 EXPATH=$(basename $PWD)
 
 DATA_PATH=/home/bhavya/datasets/cvwc/
-DATA_PATH_BASE=/home/bhavya/datasets/cvwc/atrw_reid_train/
+DATA_PATH_BASE_TRAIN=/home/bhavya/datasets/cvwc/atrw_reid_train
+DATA_PATH_BASE_TEST=/home/bhavya/datasets/cvwc/atrw_reid_test
 
 #######################################################
 ## Options
@@ -39,7 +40,7 @@ if [ "$PHASE" = "TRAIN" ]; then
 	fi
 
 	if ! [ -e ${CHECKPOINT} ] ; then
-	    python -u train_hdc_k_all.py -i -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE}" ${TRAIN_OPT} 2>&1 | tee -a $LOG_FILE
+	    python -u train_hdc_k_all.py -i -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE_TRAIN}" ${TRAIN_OPT} 2>&1 | tee -a $LOG_FILE
 	    sleep 10 # wait for the disk sync
 	fi
 fi
@@ -57,15 +58,17 @@ NEXT_ITER=`expr ${LAST_STEP}`
 date
 
 if [ "$PHASE" = "TRAIN" ]; then
-   python -u train_hdc_k_all.py -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE}"  ${TRAIN_OPT} -e ${NEXT_ITER} 2>&1 | tee -a $LOG_FILE
+   python -u train_hdc_k_all.py -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE_TRAIN}"  ${TRAIN_OPT} -e ${NEXT_ITER} 2>&1 | tee -a $LOG_FILE
 fi
 
 
 if [ "$PHASE" = "VAL" ]; then
    while true; do
-#       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TEST}" --data_path_base "${DATA_PATH_BASE}"  -o ${EVAL_TEST} 2>&1 | tee -a $LOG_FILE
-       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE}"  -o ${EVAL_TRAIN} 2>&1 | tee -a $LOG_FILE
+       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE_TRAIN}"  -o ${EVAL_TRAIN} 2>&1 | tee -a $LOG_FILE
        sleep 60
    done
 fi
 ######################################################
+if [ "$PHASE" = "EVAL" ]; then
+       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TEST}" --data_path_base "${DATA_PATH_BASE_TEST}"  -o ${EVAL_TEST} --iter 9000 2>&1 | tee -a $LOG_FILE
+fi

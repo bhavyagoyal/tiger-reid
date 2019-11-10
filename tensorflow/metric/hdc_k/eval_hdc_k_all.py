@@ -22,6 +22,7 @@ import traceback
 import glob
 import tensorflow as tf
 import gc
+import json
 
 #export PYTHONPATH=$(pwd)/../../:${PYTHONPATH}
 sys.path.insert(0, os.path.abspath('../../') )
@@ -64,13 +65,29 @@ def evaluate_all_ranks(features, labels):
             same_ids = group[np.arange(len(group))!=i]
             rank = index.check_rank( query_id, same_ids )
             all_ranks.append(rank)
-
         if gidx%100==0:
             sys.stdout.write('*')
     sys.stdout.write('\n')
     del index
     gc.collect()
     return np.array(all_ranks)
+
+def evaluate_nearest(features, labels, output):
+    index = indexlib.BruteForceBLAS()
+    index.fit(features)
+    ans = []
+    for idx in range(len(features)):
+        diction = {}
+        diction['query_id']=idx
+        nearest_idxs = index.query(features[idx], 11)[0]
+        nearest_idxs.remove(idx)
+        diction['ans_id']=[int(labels[x]) for x in nearest_idxs]
+        ans.append(diction)
+    del index
+    gc.collect()
+    with open(output+'.json', 'w') as outfile:
+        json.dump(ans, outfile)
+    return
 
 
 def extract_features(sess, fc_embedding, batch_labels):
@@ -120,7 +137,6 @@ def evaluate(args):
     print("Loading data from", data_path, data_path_base)
     dataset = sop.GenericDataset(data_path, data_path_base)
     all_data = dataset()
-
     phase_is_train = tf.placeholder_with_default(tf.constant(False), shape=[], name='phase_is_train')
     image_loader = sop.SquareScaleImageLoader(DATA_IMAGE_SIZE)
 
@@ -143,6 +159,14 @@ def evaluate(args):
     ##########################################################
     for loop in itertools.count():
         total_begin_time = time.time()
+        if(args.iter is not None):
+            fpath = save_path + '-' + str(args.iter)
+            with tf.Session(config=tfconfig) as sess:
+                print "Restoring from '%s'..."%fpath
+                saver.restore(sess, fpath )
+                features, labels = extract_features(sess, fc_embedding, batch_labels)
+                evaluate_nearest(features, labels, output)
+                sys.exit(0)
         checkpoint_files = sorted([ fpath.split('.')[0] for fpath in glob.glob( save_path + "-*.meta" ) ])
         ##########################################################
         for fpath in checkpoint_files :
@@ -186,6 +210,7 @@ def main():
     parser.add_argument('--augmentation', help='augmentation(crop,rotate,scale), default=crop', default='crop' )
     parser.add_argument('-n','--embedding_dims', help='embedding dimension, default=1024', type=int, default=1024 )
     parser.add_argument('-b','--batch_size', help='default=128', type=int, default=128 )
+    parser.add_argument('--iter', help='iteration to evaluate', type=int, default=None )
     parser.add_argument('-l','--loop_interval', help='loop interval default=0', type=int, default=0 )
     parser.add_argument('-g','--gpu_id', help='gpu_id, default=0', type=int, default=0 )
     parser.add_argument('--n_heads', help='# of heads for HDC, default=5', type=int, default=5)
