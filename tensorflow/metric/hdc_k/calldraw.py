@@ -8,5 +8,5 @@ expath2= lambda p: [ ( p+" train", ex_prefix+p+"/save/evalc_train.dmp" ) , ( p+"
 methods = list( itertools.chain( *[ expath2(p) for p in sys.argv[1:] ] ))
 executable = 'python'
 scriptname = 'draweval.py'
-args = ['-z', '-c','2','-m', str(methods) ]
+args = ['-z', '-c', '2', '-a', '-m', str(methods) ]
 subprocess.call([executable, scriptname] + args)

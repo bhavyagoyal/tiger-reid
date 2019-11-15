@@ -78,10 +78,10 @@ def evaluate_nearest(features, labels, output):
     ans = []
     for idx in range(len(features)):
         diction = {}
-        diction['query_id']=idx
-        nearest_idxs = index.query(features[idx], 11)[0]
+        diction['query_id']=int(labels[idx])
+        nearest_idxs = index.query(features[idx], 100000000)[0]
         nearest_idxs.remove(idx)
-        diction['ans_id']=[int(labels[x]) for x in nearest_idxs]
+        diction['ans_ids']=[int(labels[x]) for x in nearest_idxs]
         ans.append(diction)
     del index
     gc.collect()
