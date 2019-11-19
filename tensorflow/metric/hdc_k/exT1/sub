@@ -5,9 +5,9 @@
 BASEPATH=$(dirname $PWD)
 EXPATH=$(basename $PWD)
 
-DATA_PATH=/home/bhavya/datasets/cvwc/
-DATA_PATH_BASE_TRAIN=/home/bhavya/datasets/cvwc/atrw_reid_train
-DATA_PATH_BASE_TEST=/home/bhavya/datasets/cvwc/atrw_reid_test
+DATA_PATH=/u/b/h/bhavya/datasets/cvwc/
+DATA_PATH_BASE_TRAIN=/u/b/h/bhavya/datasets/cvwc/atrw_reid_train
+DATA_PATH_BASE_TEST=/u/b/h/bhavya/datasets/cvwc/atrw_reid_test
 
 #######################################################
 ## Options
@@ -21,7 +21,7 @@ DATA_TEST=${DATA_PATH}/metric_test.txt
 EMB_OPT=" --n_heads=9 --pooling=avgnmax "
 TRAIN_OPT="-s ${SAVE_PATH} -b 100 -l 0.0002 --beta1=0.95 --lr_decay_rate=0.5 --sample_normalization --lr_decay_staircase --lr_decay_steps=10000 --positive_probability=10 --weight_decay=0.00004 --flat_hardratio=0.5 --weighted_class_sampling -t 100"${EMB_OPT}
 # must be either TRAIN or VAL
-PHASE="EVAL"
+PHASE="VAL"
 LOG_FILE=$PWD/$PHASE'.log'
 > $LOG_FILE
 LAST_STEP=10000
@@ -63,10 +63,7 @@ fi
 
 
 if [ "$PHASE" = "VAL" ]; then
-   while true; do
-       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE_TRAIN}"  -o ${EVAL_TRAIN} 2>&1 | tee -a $LOG_FILE
-       sleep 60
-   done
+   python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE_TRAIN}"  -o ${EVAL_TRAIN} 2>&1 | tee -a $LOG_FILE
 fi
 ######################################################
 if [ "$PHASE" = "EVAL" ]; then

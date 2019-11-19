@@ -31,9 +31,9 @@ import metric_hdc_k_all as metric_learning
 import common.dataset.sop as sop
 from common.utils.miscs import ExponentialMovingAverage as EMA
 
-def get_available_gpus():
-    local_device_protos = device_lib.list_local_devices()
-    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+# def get_available_gpus():
+#     local_device_protos = device_lib.list_local_devices()
+#     return [x.name for x in local_device_protos if x.device_type == 'GPU']
 
 def get_optimizer(args, global_step):
     base_learning_rate = args.learning_rate
@@ -64,12 +64,9 @@ def get_optimizer(args, global_step):
     return optimizer
 
 
-def create_multigpu_loss_from_networks(args, gpus, optimizer, endpoints_list, labels):
+def create_multigpu_loss_from_networks(args, optimizer, endpoints_list, labels):
     nonzero_only = args.nonzero_only
     negative_margin = args.negative_margin
-    combine_loss = args.combine_loss
-    cpu_loss = args.cpu_loss
-    last_gpu_loss = args.last_gpu_loss
     positive_weight = args.positive_weight
     n_heads = args.n_heads
     sample_normalization = args.sample_normalization
@@ -80,111 +77,61 @@ def create_multigpu_loss_from_networks(args, gpus, optimizer, endpoints_list, la
     if len(hard_ratios) < n_heads:
         hard_ratios += [ flat_hardratio ] * (n_heads - len(hard_ratios) )
 
-    num_train_gpus = len(gpus)
-    if combine_loss and last_gpu_loss:
-        num_train_gpus-=1  # reserve the last gpu for the loss
-
-    tower_grads = []
+    batch_labels = labels
+    losses = []
+    for j in range(n_heads):
+        embedding = endpoints_list['embedding%d'%j]
+        if sample_normalization :
+            loss = metric_learning.hdc_one_loss_sn(embedding, batch_labels, hard_ratios[j], negative_margin, positive_weight )
+        else:
+            loss = metric_learning.hdc_one_loss(embedding, batch_labels, hard_ratios[j], negative_margin, positive_weight )
+        losses.append( loss )
+    loss_sum = tf.add_n( losses )
+    if((tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))!=[]):
+        loss_sum = loss_sum + tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+    tf.add_to_collection(tf.GraphKeys.LOSSES, loss_sum )
+    # Calculate the gradients for the batch of data on this tower.
+    grads = optimizer.compute_gradients(loss_sum)
     #######################################################################
-    if combine_loss and ( cpu_loss or last_gpu_loss) :
-        assert None, "Not implemented"
-        #######################################################################
-    elif combine_loss and not ( cpu_loss or last_gpu_loss) :
-        #######################################################################
-        combined_labels = tf.concat(values=labels, axis=0)
-        for i in range(num_train_gpus):
-            print('creating the loss in', gpus[i])
-            with tf.name_scope('%s_%d' % ('tower', i)) as scope:
-                with tf.device(gpus[i]):
-                    # copy the embeddings from other GPUs with stop_gradient
-                    losses_in_this_gpu = []
-                    for j in range(n_heads):
-                        embeddings = [ endpoints_list[k]['embedding%d'%j]  for k in range(num_train_gpus) ]
-                        all_embedding = [ embeddings[k] if i==k else tf.stop_gradient(embeddings[k]) for k in range(num_train_gpus) ]
-                        combined_embedding = tf.concat(values=all_embedding, axis=0)
-                        if sample_normalization :
-                            loss = metric_learning.hdc_one_loss_sn(combined_embedding, combined_labels, hard_ratios[j], negative_margin, positive_weight )
-                        else:
-                            loss = metric_learning.hdc_one_loss(combined_embedding, combined_labels, hard_ratios[j], negative_margin, positive_weight )
-                        losses_in_this_gpu.append( loss )
-
-                    loss_sum = tf.add_n( losses_in_this_gpu  )
-                    if((tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))!=[]):
-                        loss_sum = loss_sum + (tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))/num_train_gpus)
-                    tf.add_to_collection(tf.GraphKeys.LOSSES, loss_sum )
-                    effective_loss = loss_sum * num_train_gpus # Since the grads will be averaged by num_train_gpus
-
-                    # Calculate the gradients for the batch of data on this tower.
-                    grads = optimizer.compute_gradients(effective_loss)
-                    # Keep track of the gradients across all towers.
-                    tower_grads.append(grads)
-        #######################################################################
-    else:
-        #######################################################################
-        # Don't Combine the embeddings.
-        for i in range(num_train_gpus):
-            print('creating the loss in', gpus[i])
-            with tf.name_scope('%s_%d' % ('tower', i)) as scope:
-                with tf.device(gpus[i]):
-                    batch_labels = labels[i]
-
-                    losses_in_this_gpu = []
-                    for j in range(n_heads):
-                        embedding = endpoints_list[i]['embedding%d'%j]
-                        if sample_normalization :
-                            loss = metric_learning.hdc_one_loss_sn(embedding, batch_labels, hard_ratios[j], negative_margin, positive_weight )
-                        else:
-                            loss = metric_learning.hdc_one_loss(embedding, batch_labels, hard_ratios[j], negative_margin, positive_weight )
-                        losses_in_this_gpu.append( loss )
-
-                    loss_sum = tf.add_n( losses_in_this_gpu  )
-                    if((tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))!=[]):
-                        loss_sum = loss_sum + tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-                    tf.add_to_collection(tf.GraphKeys.LOSSES, loss_sum )
-                    # Calculate the gradients for the batch of data on this tower.
-                    grads = optimizer.compute_gradients(loss_sum)
-                    # Keep track of the gradients across all towers.
-                    tower_grads.append(grads)
-        #######################################################################
     #######################################################################
-    return tower_grads
+    return grads
 
-def average_gradients(tower_grads):
-    """Calculate the average gradient for each shared variable across all towers.
-
-    Note that this function provides a synchronization point across all towers.
-
-    Args:
-    tower_grads: List of lists of (gradient, variable) tuples. The outer list
-      is over individual gradients. The inner list is over the gradient
-      calculation for each tower.
-    Returns:
-     List of pairs of (gradient, variable) where the gradient has been averaged
-     across all towers.
-    """
-    average_grads = []
-    for grad_and_vars in zip(*tower_grads):
-        # Note that each grad_and_vars looks like the following:
-        #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
-        grads = []
-        for g, _ in grad_and_vars:
-            # Add 0 dimension to the gradients to represent the tower.
-            expanded_g = tf.expand_dims(g, 0)
-
-            # Append on a 'tower' dimension which we will average over below.
-            grads.append(expanded_g)
-
-        # Average over the 'tower' dimension.
-        grad = tf.concat(axis=0, values=grads)
-        grad = tf.reduce_mean(grad, 0)
-
-        # Keep in mind that the Variables are redundant because they are shared
-        # across towers. So .. we will just return the first tower's pointer to
-        # the Variable.
-        v = grad_and_vars[0][1]
-        grad_and_var = (grad, v)
-        average_grads.append(grad_and_var)
-    return average_grads
+# def average_gradients(tower_grads):
+#     """Calculate the average gradient for each shared variable across all towers.
+#
+#     Note that this function provides a synchronization point across all towers.
+#
+#     Args:
+#     tower_grads: List of lists of (gradient, variable) tuples. The outer list
+#       is over individual gradients. The inner list is over the gradient
+#       calculation for each tower.
+#     Returns:
+#      List of pairs of (gradient, variable) where the gradient has been averaged
+#      across all towers.
+#     """
+#     average_grads = []
+#     for grad_and_vars in zip(*tower_grads):
+#         # Note that each grad_and_vars looks like the following:
+#         #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
+#         grads = []
+#         for g, _ in grad_and_vars:
+#             # Add 0 dimension to the gradients to represent the tower.
+#             expanded_g = tf.expand_dims(g, 0)
+#
+#             # Append on a 'tower' dimension which we will average over below.
+#             grads.append(expanded_g)
+#
+#         # Average over the 'tower' dimension.
+#         grad = tf.concat(axis=0, values=grads)
+#         grad = tf.reduce_mean(grad, 0)
+#
+#         # Keep in mind that the Variables are redundant because they are shared
+#         # across towers. So .. we will just return the first tower's pointer to
+#         # the Variable.
+#         v = grad_and_vars[0][1]
+#         grad_and_var = (grad, v)
+#         average_grads.append(grad_and_var)
+#     return average_grads
 
 def train(args):
     data_path = args.data_path
@@ -207,14 +154,9 @@ def train(args):
     training_iters = args.training_iters
     training_iters = training_iters if training_iters >0 else sys.maxsize
 
-    combine_loss = args.combine_loss
-    last_gpu_loss = args.last_gpu_loss
-    cpu_loss = args.cpu_loss
-
     runtime_stats = args.runtime_stats
     write_summary = args.write_summary
 
-    gpus = get_available_gpus()
 
     # Load the data before bulding the batch
     print("Loading data from", data_path, data_path_base)
@@ -232,11 +174,6 @@ def train(args):
         global_step = tf.Variable( 0, trainable=False, name='global_step',dtype=tf.int64 )
         gstep_inc = tf.assign(global_step, global_step+1)
 
-        num_train_gpus = len(gpus)
-        if combine_loss and last_gpu_loss:
-            num_train_gpus-=1  # reserve the last gpu for the loss
-            assert num_train_gpus>1, "requires more than 3 gpus"
-
         with tf.name_scope('opt') as scope:
             optimizer = get_optimizer(args, global_step)
 
@@ -245,40 +182,25 @@ def train(args):
             image_loader = sop.SquareScaleImageLoader(DATA_IMAGE_SIZE)
             batch_inputs  = sop.create_batch_by_sampling(
                     sampler, image_loader, DATA_IMAGE_SIZE,
-                    batch_size=batch_size*num_train_gpus,
-                    num_threads=num_train_gpus*8,
-                    sampling_size=batch_size*num_train_gpus,
-                    capacity= batch_size*num_train_gpus*2
+                    batch_size=batch_size,
+                    num_threads=8,
+                    sampling_size=batch_size,
+                    capacity= batch_size*2
                     )
 
-            endpoints_list = []
-            labels = []
-
             batch_imgs, batch_labels = batch_inputs
-            for i in range(num_train_gpus):
-                print('creating the embedding in', gpus[i])
-                with tf.device(gpus[i]):
-                    with tf.name_scope('%s_%d' % ('tower', i)) as scope:
-                        batch_imgs_sliced = tf.slice(batch_imgs, [i*batch_size,0,0,0], [batch_size,-1, -1, -1] )
-                        batch_labels_sliced = tf.slice(batch_labels, [i*batch_size], [batch_size] )
+            with tf.device('/cpu:0'):
+                endpoints, network = metric_learning.create_network(batch_imgs, base_network, pooling, augmentation, phase_is_train, DATA_IMAGE_SIZE, NET_INPUT_SIZE, embedding_dims, n_heads, uniform_bias, weight_decay)
+                fc_embedding = endpoints['fc_embedding']
+            grads = create_multigpu_loss_from_networks(args, optimizer, endpoints, batch_labels)
 
-                        endpoints, network = metric_learning.create_network(batch_imgs_sliced, base_network, pooling, augmentation, phase_is_train, DATA_IMAGE_SIZE, NET_INPUT_SIZE, embedding_dims, n_heads, uniform_bias, weight_decay)
-                        fc_embedding = endpoints['fc_embedding']
-
-                        endpoints_list.append( endpoints )
-                        labels.append( batch_labels_sliced )
-                        # Reuse variables for the next tower.
-                        tf.get_variable_scope().reuse_variables()
-
-            tower_grads = create_multigpu_loss_from_networks(args, gpus, optimizer, endpoints_list, labels)
-
-        with tf.name_scope('grad_avg') as scope:
-            # We must calculate the mean of each gradient. Note that this is the
-            # synchronization point across all towers.
-            if len(tower_grads) > 1:
-                grads = average_gradients(tower_grads)
-            else:
-                grads = tower_grads[0]
+        # with tf.name_scope('grad_avg') as scope:
+        #     # We must calculate the mean of each gradient. Note that this is the
+        #     # synchronization point across all towers.
+        #     if len(tower_grads) > 1:
+        #         grads = average_gradients(tower_grads)
+        #     else:
+        #         grads = tower_grads[0]
 
         with tf.name_scope('grad_apply') as scope:
             # Apply the gradients to adjust the shared variables.
@@ -424,11 +346,8 @@ def main():
     parser.add_argument('-m','--negative_margin', help='margin of the negative pair, default=0.5', type=float, default=0.5)
     parser.add_argument('--positive_weight', help="weight of positive pairs' loss, default=0.5", type=float, default='0.5')
     parser.add_argument('-z','--nonzero_only', help='make the average loss of non-zero negative only', action='store_true')
-    parser.add_argument('-c','--combine_loss', help='make one loss from multiple gpus', action='store_true')
     parser.add_argument('--sample_normalization', help='the sample normalizatino loss ', action='store_true')
     parser.add_argument('--weighted_class_sampling', help='samples the classes with weights as number of image in that class', action='store_true', default=False)
-    parser.add_argument('--cpu_loss', help='put the loss in the cpu', action='store_true')
-    parser.add_argument('--last_gpu_loss', help='put the loss in the last gpu', action='store_true')
     parser.add_argument('-f','--flat_hardratio', help='when specified, use same hard ratio for all losses', type=float, default=None)
     # inceptionv1: Uses Kaffe, [weight_decay and batchnorm updated] not implemented
     # inceptionv1bn, resnetv1_50: Uses Slim, [uniform_bias] not implemented
