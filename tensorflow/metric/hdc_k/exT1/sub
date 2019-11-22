@@ -63,9 +63,9 @@ fi
 
 
 if [ "$PHASE" = "VAL" ]; then
-   python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE_TRAIN}"  -o ${EVAL_TRAIN} 2>&1 | tee -a $LOG_FILE
+   python -u eval_hdc_k_all.py -b 32 -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TRAIN}" --data_path_base "${DATA_PATH_BASE_TRAIN}"  -o ${EVAL_TRAIN} 2>&1 | tee -a $LOG_FILE
 fi
 ######################################################
 if [ "$PHASE" = "EVAL" ]; then
-       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TEST}" --data_path_base "${DATA_PATH_BASE_TEST}"  -o ${EVAL_TEST} --iter 9800 2>&1 | tee -a $LOG_FILE
+       python -u eval_hdc_k_all.py -b 32 -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TEST}" --data_path_base "${DATA_PATH_BASE_TEST}"  -o ${EVAL_TEST} --iter 9800 2>&1 | tee -a $LOG_FILE
 fi
