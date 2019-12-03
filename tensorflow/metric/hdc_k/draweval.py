@@ -19,22 +19,6 @@ base_colors = ['blue', 'green', 'red', 'darkcyan', 'magenta',
 styles = [':', '-'] * len(base_colors)
 colors = [ base_colors[i//2] for i in range(len(base_colors)*2) ] 
 
-methods = [
-    ('EX1 train',  'ex1/save/evalc_train.dmp'), ('EX1 test',  'ex1/save/evalc_test.dmp') , 
-    ('EX2 train',  'ex2/save/evalc_train.dmp'), ('EX2 test',  'ex2/save/evalc_test.dmp') , 
-    ('EX3 train',  'ex3/save/evalc_train.dmp'), ('EX3 test',  'ex3/save/evalc_test.dmp') , 
-    ('EX4 train',  'ex4/save/evalc_train.dmp'), ('EX4 test',  'ex4/save/evalc_test.dmp') , 
-    ('EX5 train',  'ex5/save/evalc_train.dmp'), ('EX5 test',  'ex5/save/evalc_test.dmp') , 
-    ('EX6 train',  'ex6/save/evalc_train.dmp'), ('EX6 test',  'ex6/save/evalc_test.dmp') , 
-    ('EX7 train',  'ex7/save/evalc_train.dmp'), ('EX7 test',  'ex7/save/evalc_test.dmp') , 
-    ('EX8 train',  'ex8/save/evalc_train.dmp'), ('EX8 test',  'ex8/save/evalc_test.dmp') , 
-    ('EX9 train',  'ex9/save/evalc_train.dmp'), ('EX9 test',  'ex9/save/evalc_test.dmp') , 
-    ('EX10 train', 'ex10/save/evalc_train.dmp'),('EX10 test', 'ex10/save/evalc_test.dmp') , 
-    ('EX11 train', 'ex11/save/evalc_train.dmp'),('EX11 test', 'ex11/save/evalc_test.dmp') , 
-    ('EX12 train', 'ex12/save/evalc_train.dmp'),('EX12 test', 'ex12/save/evalc_test.dmp') , 
-    ]
-
-
 def load(methods):
     # db is a dictionary which contains all retrieval ranks at each iteration.
     # ex) { (0: [3,2,7,...] ), (100: [3,2,7,...] ), ... }
@@ -154,7 +138,7 @@ def main():
     parser.add_argument('-s','--save_plot', help='file to save the plot' )
     args = parser.parse_args()
 
-    args.methods = eval(args.methods) if args.methods else methods
+    args.methods = eval(args.methods) 
     print '********************************************************************'
     print '\n'.join([ str((name,path)) for name,path in args.methods if os.path.exists(path) ])
     print '********************************************************************'

@@ -5,9 +5,9 @@
 BASEPATH=$(dirname $PWD)
 EXPATH=$(basename $PWD)
 
-DATA_PATH=/u/b/h/bhavya/datasets/cvwc/
-DATA_PATH_BASE_TRAIN=/u/b/h/bhavya/datasets/cvwc/atrw_reid_train
-DATA_PATH_BASE_TEST=/u/b/h/bhavya/datasets/cvwc/atrw_reid_test
+DATA_PATH=~/datasets/cvwc/
+DATA_PATH_BASE_TRAIN=~/datasets/cvwc/atrw_reid_train/train
+DATA_PATH_BASE_TEST=~/datasets/cvwc/atrw_reid_test/test
 
 #######################################################
 ## Options
