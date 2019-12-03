@@ -22,7 +22,7 @@ DATA_TEST=${DATA_PATH}/metric_test.txt
 EMB_OPT=" --n_heads=9 --pooling=avgnmax "
 TRAIN_OPT="-s ${SAVE_PATH} -b 80 -l 0.0005 --beta1=0.95 --lr_decay_rate=0.5 --sample_normalization --lr_decay_staircase --lr_decay_steps=10000 --positive_probability=0.5 --weight_decay=0.00004 --flat_hardratio=0.5 --weighted_class_sampling -t 1000"${EMB_OPT}
 # must be either TRAIN or VAL
-PHASE="TRAIN"
+PHASE="EVAL"
 LOG_FILE=$PWD/$PHASE'.log'
 > $LOG_FILE
 LAST_STEP=20000
@@ -69,5 +69,5 @@ if [ "$PHASE" = "VAL" ]; then
 fi
 ######################################################
 if [ "$PHASE" = "EVAL" ]; then
-       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TEST}" --data_path_base "${DATA_PATH_BASE_TEST}"  -o ${EVAL_TEST} --iter 14000 -b 32 2>&1 | tee -a $LOG_FILE
+       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TEST}" --data_path_base "${DATA_PATH_BASE_TEST}"  -o ${EVAL_TEST} --iter 20000 -b 32 2>&1 | tee -a $LOG_FILE
 fi
