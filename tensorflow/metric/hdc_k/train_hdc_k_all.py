@@ -163,7 +163,8 @@ def train(args):
         DATA_IMAGE_SIZE = 404
 
     ############################################################################
-    with tf.device('/cpu:0'):
+    if(True):
+#    with tf.device('/cpu:0'):
         phase_is_train = tf.placeholder_with_default(tf.constant(True), shape=[], name='phase_is_train')
         global_step = tf.Variable( 0, trainable=False, name='global_step',dtype=tf.int64 )
         gstep_inc = tf.assign(global_step, global_step+1)
@@ -183,7 +184,8 @@ def train(args):
                     )
 
             batch_imgs, batch_labels = batch_inputs
-            with tf.device('/cpu:0'):
+            if(True):
+#            with tf.device('/cpu:0'):
                 endpoints, network = metric_learning.create_network(batch_imgs, base_network, pooling, augmentation, phase_is_train, DATA_IMAGE_SIZE, NET_INPUT_SIZE, embedding_dims, n_heads, uniform_bias, weight_decay)
                 fc_embedding = endpoints['fc_embedding']
             grads = create_multigpu_loss_from_networks(args, optimizer, endpoints, batch_labels)
