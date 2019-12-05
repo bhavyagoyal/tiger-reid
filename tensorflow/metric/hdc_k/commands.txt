@@ -1,0 +1,20 @@
+cuda10.0
+
+https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+use python2.7
+
+numpy==1.16
+tensorflow-gpu==1.14
+conda install opencv==4.1 -c conda-forge
+pillow
+
+https://github.com/tensorflow/models
+http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz
+https://github.com/bhavyagoyal/cs838-project
+fix-multi-gpu
+
+
+mkdir atrw_reid_train
+https://lilablobssc.blob.core.windows.net/cvwc2019/train/atrw_reid_train.tar.gz
+
+https://lilablobssc.blob.core.windows.net/cvwc2019/test/atrw_reid_test.tar.gz
