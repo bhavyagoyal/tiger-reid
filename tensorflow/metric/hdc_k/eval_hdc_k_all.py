@@ -66,7 +66,7 @@ def evaluate_all_ranks(features, labels):
     gc.collect()
     return np.array(all_ranks)
 
-def evaluate_nearest(features, labels, output):
+def evaluate_nearest(features, labels):
     index = indexlib.BruteForceBLAS()
     index.fit(features)
     ans = []
@@ -79,9 +79,7 @@ def evaluate_nearest(features, labels, output):
         ans.append(diction)
     del index
     gc.collect()
-    with open(output+'.json', 'w') as outfile:
-        json.dump(ans, outfile)
-    return
+    return ans
 
 
 def extract_features(sess, fc_embedding, batch_labels):
@@ -159,7 +157,20 @@ def evaluate(args):
                 print "Restoring from '%s'..."%fpath
                 saver.restore(sess, fpath )
                 features, labels = extract_features(sess, fc_embedding, batch_labels)
-                evaluate_nearest(features, labels, output)
+                ans = evaluate_nearest(features, labels)
+                if(args.wild):
+                    finans = {}
+                    with open(args.wild) as json_file:
+                        bbox = json.load(json_file)
+                    print(bbox)
+                    print(ans)
+                    finans['bboxs'] = bbox
+                    finans['reid_result'] = ans
+                else:
+                    finans = ans
+                with open(output+'.json', 'w') as outfile:
+                    json.dump(finans, outfile)
+
                 sys.exit(0)
         checkpoint_files = sorted([ fpath.split('.')[0] for fpath in glob.glob( save_path + "-*.meta" ) ])
         ##########################################################
@@ -210,6 +221,7 @@ def main():
     parser.add_argument('--n_heads', help='# of heads for HDC, default=5', type=int, default=5)
     parser.add_argument('--base_network', help='resnetv1_50, inceptionv1, inceptionv1bn', default='inceptionv1bn')
     parser.add_argument('--pooling', help='avg, avgnmax', default='avg')
+    parser.add_argument('--wild', help='if wild reid evaluation, use path of bbox json', default=None)
     args = parser.parse_args()
     # gnumpy.board_id_to_use = args.gpu_id
 
