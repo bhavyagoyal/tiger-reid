@@ -162,8 +162,8 @@ def evaluate(args):
                     finans = {}
                     with open(args.wild) as json_file:
                         bbox = json.load(json_file)
-                    print(bbox)
-                    print(ans)
+                    #print(bbox)
+                    #print(ans)
                     finans['bboxs'] = bbox
                     finans['reid_result'] = ans
                 else:

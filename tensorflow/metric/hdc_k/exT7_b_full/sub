@@ -8,6 +8,7 @@ EXPATH=$(basename $PWD)
 DATA_PATH=~/datasets/cvwc/
 DATA_PATH_BASE_TRAIN=~/datasets/cvwc/atrw_reid_train/train
 DATA_PATH_BASE_TEST=~/datasets/cvwc/atrw_reid_test/test
+DATA_PATH_BASE_WILDTEST=~/datasets/cvwc/crops1
 
 #######################################################
 ## Options
@@ -16,10 +17,11 @@ SAVE_PATH=${SAVE}/ebay_train
 CHECKPOINT=${SAVE}/checkpoint
 EVAL_TRAIN=${EXPATH}/evalc_train.dmp
 EVAL_TEST=${EXPATH}/evalc_test.dmp
-BBOX_PATH=${EXPATH}/bbox.json
+BBOX_PATH=${DATA_PATH_BASE_WILDTEST}/bbox.json
 DATA_TRAIN=${DATA_PATH}/metric_train.txt
 DATA_VAL=${DATA_PATH}/metric_val_short.txt
 DATA_TEST=${DATA_PATH}/metric_test.txt
+DATA_WILDTEST=${DATA_PATH_BASE_WILDTEST}/metric_detection_test.txt
 EMB_OPT=" --n_heads=9 --pooling=avgnmax "
 TRAIN_OPT="-s ${SAVE_PATH} -b 80 -l 0.0005 --beta1=0.95 --lr_decay_rate=0.5 --sample_normalization --lr_decay_staircase --lr_decay_steps=10000 --positive_probability=0.5 --weight_decay=0.00004 --flat_hardratio=0.5 --weighted_class_sampling -t 1000"${EMB_OPT}
 # must be either TRAIN or VAL
@@ -79,6 +81,6 @@ fi
 ######################################################
 
 if [ "$PHASE" = "WILDEVAL" ]; then
-       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_TEST}" --data_path_base "${DATA_PATH_BASE_TEST}"  -o ${EVAL_TEST} --iter 20000 --wild ${BBOX_PATH} -b 32 2>&1 | tee -a $LOG_FILE
+       python -u eval_hdc_k_all.py -s ${SAVE_PATH} ${EMB_OPT} -d "${DATA_WILDTEST}" --data_path_base "${DATA_PATH_BASE_WILDTEST}"  -o ${EVAL_TEST} --iter 20000 --wild ${BBOX_PATH} -b 32 2>&1 | tee -a $LOG_FILE
 fi
 
