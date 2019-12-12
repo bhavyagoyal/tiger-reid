@@ -1,6 +1,6 @@
 ## Tiger ReID
 
-Code for Computer Vision for Wildlife Conservation (CVWC) part of ICCV 2019
+Code for challenge track of Computer Vision for Wildlife Conservation (CVWC) part of ICCV 2019
 
 #### Usage
 
