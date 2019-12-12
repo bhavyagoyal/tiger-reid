@@ -8,7 +8,7 @@ EXPATH=$(basename $PWD)
 DATA_PATH=~/datasets/cvwc/
 DATA_PATH_BASE_TRAIN=~/datasets/cvwc/atrw_reid_train/train
 DATA_PATH_BASE_TEST=~/datasets/cvwc/atrw_reid_test/test
-DATA_PATH_BASE_WILDTEST=~/datasets/cvwc/crops1
+DATA_PATH_BASE_WILDTEST=~/datasets/cvwc/crops4
 
 #######################################################
 ## Options
