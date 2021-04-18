@@ -1,0 +1,10 @@
+matplotlib
+opencv-python
+pandas
+Pillow
+scikit-learn
+scipy
+tensorboard
+tensorboardX
+numpy
+tensorflow-gpu==1.14
